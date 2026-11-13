@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 
 # ---- Release settings (update on every release) ---------------------------------------
 $Repo   = 'v-Brad/endpoint-install'
-$Tag    = 'main'
+$Tag    = 'main'      # testing: unpinned. Use a release tag (e.g. v1.0.0) for production
 $Hash   = 'PUT-SHA256-OF-Install-Endpoint.ps1-HERE'
 $PimUrl = 'https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadgroup'
 $Url    = "https://raw.githubusercontent.com/$Repo/$Tag/Install-Endpoint.ps1"
@@ -87,6 +87,9 @@ Remove-Item $tmpProfile -Recurse -Force -ErrorAction SilentlyContinue
 
 # ---- Elevate (UAC prompts a standard user for admin credentials) -----------------------
 Write-Host 'Relaunching as administrator - enter your admin credentials when prompted...' -ForegroundColor Yellow
+Show-Message ("A Windows UAC prompt for 'Windows PowerShell' is about to appear.`n`n" +
+              "Enter the credentials of your ELEVATED admin account (the one you just activated in PIM).`n`n" +
+              "If you cannot see it, check the taskbar - it can open behind other windows.")
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($payload))
 try {
     Start-Process -FilePath 'powershell.exe' -Verb RunAs -ArgumentList @(

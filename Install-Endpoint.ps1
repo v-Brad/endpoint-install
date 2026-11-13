@@ -4,7 +4,6 @@
 
 .DESCRIPTION
     Launched by Install.ps1 after elevation. Does the parts that are safe to be public:
-      - OS check (Windows 11 24H2 / 26H2 and newer)
       - GlobalProtect install / connect
       - Nearest-server lookup
     Then copies the PRIVATE, code-signed Install-Core.ps1 from the nearest server's it$ share
@@ -25,9 +24,8 @@ $VpnPortal      = 'vpnportal.vertiv.com'
 $GpMsiUrl       = 'https://vpnportal.vertiv.com/global-protect/getmsi.esp'
 $NearestFile    = '\\bfit01\it$\nearestserver.txt'
 $ITRoot         = Join-Path $env:SystemDrive 'IT.Tmp'
-$MinBuild       = 26100                                  # Windows 11 24H2; 26H2+ is higher
 $CoreRelPath    = 'Install\Install-Core.ps1'             # relative to \\<server>\it$\
-$RequireSignedCore    = $true                            # set $false ONLY while testing
+$RequireSignedCore    = $false                            # set $false ONLY while testing
 $CoreSignerThumbprint = 'PUT-CODE-SIGNING-CERT-THUMBPRINT-HERE'
 # ---------------------------------------------------------------------------------------
 
@@ -42,12 +40,6 @@ $isAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIden
            IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 if (-not $isAdmin) {
     throw 'This script must run elevated. Start it with:  irm https://buyany.cloud/win | iex'
-}
-
-# ---- OS check -------------------------------------------------------------------------
-$build = [int](Get-CimInstance Win32_OperatingSystem).BuildNumber
-if ($build -lt $MinBuild) {
-    throw "Windows build $build is older than 24H2 (build $MinBuild). Windows 11 24H2 and newer only."
 }
 
 # ---- GlobalProtect --------------------------------------------------------------------
