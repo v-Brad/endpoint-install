@@ -12,7 +12,7 @@ $ErrorActionPreference = 'Stop'
 
 # ---- Release settings (update on every release) ---------------------------------------
 $Repo   = 'v-Brad/endpoint-install'
-$Tag    = 'v1.0.0'
+$Tag    = 'main'
 $Hash   = 'PUT-SHA256-OF-Install-Endpoint.ps1-HERE'
 $PimUrl = 'https://portal.azure.com/#view/Microsoft_Azure_PIMCommon/ActivationMenuBlade/~/aadgroup'
 $Url    = "https://raw.githubusercontent.com/$Repo/$Tag/Install-Endpoint.ps1"
