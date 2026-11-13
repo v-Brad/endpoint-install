@@ -26,6 +26,32 @@ function Show-Message {
         [System.Windows.Forms.MessageBoxIcon]::Information)
 }
 
+function Show-Choice {
+    param([string]$Text, [string]$Title = 'Endpoint install')
+    Add-Type -AssemblyName System.Windows.Forms
+    [System.Windows.Forms.MessageBox]::Show($Text, $Title,
+        [System.Windows.Forms.MessageBoxButtons]::YesNoCancel,
+        [System.Windows.Forms.MessageBoxIcon]::Warning)
+}
+
+# Standard users can read the local Administrators membership; no elevation needed.
+function Test-InLocalAdmins {
+    param([string]$Account)
+    $short = if ($Account -match '\\') { $Account.Split('\')[-1] }
+             elseif ($Account -match '@') { $Account.Split('@')[0] }
+             else { $Account }
+    $lines = @(& net.exe localgroup Administrators 2>$null)
+    $dash  = 0
+    for ($i = 0; $i -lt $lines.Count; $i++) { if ($lines[$i] -match '^-{5,}\s*$') { $dash = $i; break } }
+    $members = @($lines[($dash + 1)..($lines.Count - 1)] | Where-Object { $_ -and $_.Trim() } |
+                 ForEach-Object { $_.Trim() })
+    if ($members.Count -gt 0) { $members = $members[0..($members.Count - 2)] }   # drop "The command completed..." line
+    foreach ($m in $members) {
+        if ($m -ieq $Account -or $m.Split('\')[-1] -ieq $short) { return $true }
+    }
+    return $false
+}
+
 $IsAdmin = ([Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()).
            IsInRole([Security.Principal.WindowsBuiltInRole]::Administrator)
 
@@ -85,10 +111,31 @@ Start-Process -FilePath $edge -Wait -ArgumentList @(
     "--user-data-dir=`"$tmpProfile`"", "`"$PimUrl`"")
 Remove-Item $tmpProfile -Recurse -Force -ErrorAction SilentlyContinue
 
+# ---- Has this PC picked up the elevated account yet? -----------------------------------
+Add-Type -AssemblyName Microsoft.VisualBasic
+$ElevAccount = [Microsoft.VisualBasic.Interaction]::InputBox(
+    "Enter your ELEVATED admin account (e.g. INT\name or name@domain.com).`n`nLeave blank to skip the check.",
+    'Elevated account', '')
+if ($ElevAccount) {
+    $ElevAccount = $ElevAccount.Trim()
+    if (-not (Test-InLocalAdmins $ElevAccount)) {
+        $r = Show-Choice ("'$ElevAccount' is not in this PC's local Administrators group yet.`n`n" +
+                          "After a PIM activation the PC usually needs a restart before it recognises the account.`n`n" +
+                          "Yes = restart now (then run the install again)`n" +
+                          "No = continue anyway (e.g. you get admin through a group)`n" +
+                          "Cancel = stop")
+        if ($r -eq 'Yes') {
+            & shutdown.exe /r /t 15 /c "Restarting so your elevated account is recognised. Run the install again after sign-in."
+            return
+        }
+        if ($r -eq 'Cancel') { Write-Host 'Cancelled.'; return }
+    }
+}
+
 # ---- Elevate (UAC prompts a standard user for admin credentials) -----------------------
 Write-Host 'Relaunching as administrator - enter your admin credentials when prompted...' -ForegroundColor Yellow
 Show-Message ("A Windows UAC prompt for 'Windows PowerShell' is about to appear.`n`n" +
-              "Enter the credentials of your ELEVATED admin account (the one you just activated in PIM).`n`n" +
+              "Enter the credentials of your ELEVATED admin account ($(if ($ElevAccount) { $ElevAccount } else { 'the one you just activated in PIM' })).`n`n" +
               "If you cannot see it, check the taskbar - it can open behind other windows.")
 $enc = [Convert]::ToBase64String([Text.Encoding]::Unicode.GetBytes($payload))
 try {
